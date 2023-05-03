@@ -1,0 +1,36 @@
+--出力例
+--サマータイム有り＋時差情報 先頭に!をつけるとUTC時間になる
+%Y/%m/%d(%Vw)%X(UTC%z%DST)
+
+--和暦表示　令和から
+%VR%m月%d日(%Vw)%H時%M分%S秒
+
+--全部出し
+%UTC
+%c%DST
+%x%X%z
+%s
+%ISO
+%ISOZ
+%VR%m月%d日(%Vw)%H時%M分%S秒
+
+--複数のタイムゾーン
+--%JST
+UTC+?? %UTC
+UTC協定時間%ISOZ
+ISO8601 %ISO
+
+%EM
+--AC音ゲーの情報を出す
+%JST
+%i
+%J%is
+%K%it
+%E%ie
+
+
+--誕生日
+%JST
+%in
+%ib
+%ic
