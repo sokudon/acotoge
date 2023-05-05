@@ -398,6 +398,7 @@ function parse_jp_era(date)
    end  	
    local tu = elasped(imas[inum][2])
    local imasname =imas[inum][1] .."("..imas[inum][3]..")"
+   imasname =string.gsub(imasname, "()","")
    local gm = "開始から"  
     if(tu<0) then
     gm="開始まで" 

@@ -15,7 +15,7 @@
 %VR%m月%d日(%Vw)%H時%M分%S秒
 
 --複数のタイムゾーン
---%JST
+%JST
 UTC+?? %UTC
 UTC協定時間%ISOZ
 ISO8601 %ISO
