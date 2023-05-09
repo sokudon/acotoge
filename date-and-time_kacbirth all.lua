@@ -29,6 +29,7 @@
 --%is	AC音ゲーの記念日の時間からの経過時間
 --%it	AC音ゲーの記念日までの時間
 --%ie	AC音ゲーのサービス終了した時間からの経過時間(データがないものは表示なし)
+
 --%ib	AC音ゲー個別誕生日
 --%ic	AC音ゲー個別誕生日までの時間
 --%in	AC音ゲー個別
@@ -348,6 +349,10 @@ end
 
 function get_ep(tu)	
 	
+	if(tu<0)then
+	tu=-tu
+	end
+	
    local total = tu*10
 
 	--local tenths   = math.floor(total % 10)
@@ -361,7 +366,12 @@ function get_ep(tu)
 	--local hours_infinite  = math.floor(total / 36000)
 	--local seconds_infinite  = math.floor(total / 10)
 	--local minutes_infinite  = math.floor(total / 600)
-   local ep = years.."年"..days.."日".. hours.."時".. minutes.."分"..seconds .."秒"
+	local yearst    = years.."年"
+	if(years==0)then
+	yearst =""
+	end
+	
+   local ep = yearst..days.."日".. hours.."時".. minutes.."分"..seconds .."秒"
    
    return ep
 end
@@ -387,8 +397,15 @@ function parse_jp_era(date)
    inum =1
    end  	
    local tu = elasped(imas[inum][2])
-   local imasname =imas[inum][1] .."("..imas[inum][3]..")"
-   local gm = "開始から" 
+   local imasname =imas[inum][1]
+   
+  	if(isempty(imm)==false) then
+  	imasname =imasnaem .."("..imas[inum][3]..")"
+  	end
+   local gm = "開始から"  
+    if(tu<0) then
+    gm="開始まで" 
+	end
   
 	local dateu='!%m%d'       --(%a)%X(UTC+09:00)'
 	local nst =os.date(dateu,os.time()+9*3600)
@@ -404,7 +421,7 @@ function parse_jp_era(date)
   
   local theyear=string.format("%04d",tonumber(os.date("!%Y",os.time()+9*3600)))
   local dt = theyear .. "-".. string.format("%02d",tonumber(os.date('!%m',tt))).."-".. string.format("%02d",tonumber(os.date('!%d',tt))).."T"..string.format("%02d",tonumber(os.date('!%H',tt))) ..":00:00+09:00"
- 
+  
     debugtxt3=dt
     
   local gm = "周年" 
@@ -607,15 +624,15 @@ function script_properties()
 
 	obs.obs_properties_add_text(props, "format_string", "Format String", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_float(props, "UTC", "WorldTime UTC-14～+14(%UTC)", -14, 14, 1)
-	obs.obs_properties_add_int(props, "IMAS", "AC音ゲー選択", 1, #imas, 1)
-	obs.obs_properties_add_text(props, "im", "AC音ゲー稼働日", obs.OBS_TEXT_DEFAULT)
+	--obs.obs_properties_add_int(props, "IMAS", "AC音ゲー選択", 1, #imas, 1)
+	obs.obs_properties_add_text(props, "im", "AC音ゲー稼働日検索", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_int(props, "IMSERIES", "AC音ゲー個別検索", 1, 5, 1)
 	obs.obs_properties_add_text(props, "cg", "1.KAC", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_text(props, "ml", "2.SEGA", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_text(props, "sm", "3.BNAM", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_text(props, "sc", "4.OTHER", obs.OBS_TEXT_DEFAULT)
 	obs.obs_properties_add_text(props, "ds", "5.ALL", obs.OBS_TEXT_DEFAULT)
-	obs.obs_properties_add_int(props, "DAYLIM", "稼働日何日以内全部", 0, 30, 1)
+	obs.obs_properties_add_int(props, "DAYLIM", "稼働日何日以内 %EM", 0, 30, 1)
 	return props
 end
 
@@ -626,9 +643,23 @@ function script_description()
 end
 
 function findidol(sel,s)
+
+
+if(sel=="AC")then
+local st=imas
+local stlen=tonumber(#st)
+for i=1,stlen do
+if(string.find(imas[i][1],s) ~= nil)then
+obs.obs_data_set_int(settings, "IMAS",i)
+return i
+end
+end
+return 1
+end
+
+
 local st=imasb[sel]
 local stlen=tonumber(#st)
-
 if(sel=="ml")then
 for i=1,stlen do
 if((imasb["ml"][i][2]..imasb["ml"][i][3]):match(s))then
@@ -715,122 +746,14 @@ end
 end
 end
 
---ml":[["2020-01-07T15:00:00.000Z",
-stlen=tonumber(#imasb["ml"])
-for i=1,stlen do
-local birth=imasb["ml"][i][1]
-local idol=imasb["ml"][i][2]
-if(birth:match("([Z%+])(%d?%d?):?(%d?%d?)$")) then
-local tmp=string.gsub(birth, "^(%d+)",theyear)
-local tmp2=string.gsub(birth, "^(%d+)",theyearn)
-local t=lefttime(tmp)
-local tt=lefttime(tmp2)
-t=math.ceil(t/3600/24);
-tt=math.ceil(tt/3600/24);
-if((t>=0 and t<=daycalc) or (tt>=0 and tt<=daycalc))then
-tmp =MMDD(birth).." あと".. math.abs(t).."日 "
-if(t<0)then
-tmp =MMDD(birth).." あと".. math.abs(tt).."日 "
-end
-tmp = tmp .. idol.."\r\n"
---birthst[idol]=tmp
-end
-end
-end
-
-stlen=tonumber(#imasb["cg"])
-for i=1,stlen do
-local birth=imasb["cg"][i][1]
-local idol=imasb["cg"][i][2]
-if(birth:match("([Z%+])(%d?%d?):?(%d?%d?)$")) then
-local tmp=string.gsub(birth, "^(%d+)",theyear)
-local tmp2=string.gsub(birth, "^(%d+)",theyearn)
-local t=lefttime(tmp)
-local tt=lefttime(tmp2)
-t=math.ceil(t/3600/24);
-tt=math.ceil(tt/3600/24);
-if((t>=0 and t<=daycalc) or (tt>=0 and tt<=daycalc))then
-tmp =MMDD(birth).." あと".. math.abs(t).."日 "
-if(t<0)then
-tmp =MMDD(birth).." あと".. math.abs(tt).."日 "
-end
-tmp = tmp .. idol.."\r\n"
---birthst[idol]=tmp
-end
-end
-end
-
-stlen=tonumber(#imasb["sm"])
-for i=1,stlen do
-local birth=imasb["sm"][i][1]
-local idol=imasb["sm"][i][2]
-if(birth:match("([Z%+])(%d?%d?):?(%d?%d?)$")) then
-local tmp=string.gsub(birth, "^(%d+)",theyear)
-local tmp2=string.gsub(birth, "^(%d+)",theyearn)
-local t=lefttime(tmp)
-local tt=lefttime(tmp2)
-t=math.ceil(t/3600/24);
-tt=math.ceil(tt/3600/24);
-if((t>=0 and t<=daycalc) or (tt>=0 and tt<=daycalc))then
-tmp =MMDD(birth).." あと".. math.abs(t).."日 "
-if(t<0)then
-tmp =MMDD(birth).." あと".. math.abs(tt).."日 "
-end
-tmp = tmp .. idol.."\r\n"
---birthst[idol]=tmp
-end
-end
-end
-
-stlen=tonumber(#imasb["sc"])
-for i=1,stlen do
-local birth=imasb["sc"][i][1]
-local idol=imasb["sc"][i][2]
-if(birth:match("([Z%+])(%d?%d?):?(%d?%d?)$")) then
-local tmp=string.gsub(birth, "^(%d+)",theyear)
-local tmp2=string.gsub(birth, "^(%d+)",theyearn)
-local t=lefttime(tmp)
-local tt=lefttime(tmp2)
-t=math.ceil(t/3600/24);
-tt=math.ceil(tt/3600/24);
-if((t>=0 and t<=daycalc) or (tt>=0 and tt<=daycalc))then
-tmp =MMDD(birth).." あと".. math.abs(t).."日 "
-if(t<0)then
-tmp =MMDD(birth).." あと".. math.abs(tt).."日 "
-end
-tmp = tmp .. idol.."\r\n"
---birthst[idol]=tmp
-end
-end
-end
-
-stlen=tonumber(#imasb["ds"])
-for i=1,stlen do
-local birth=imasb["ds"][i][1]
-local idol=imasb["ds"][i][2]
-if(birth:match("([Z%+])(%d?%d?):?(%d?%d?)$")) then
-local tmp=string.gsub(birth, "^(%d+)",theyear)
-local tmp2=string.gsub(birth, "^(%d+)",theyearn)
-local t=lefttime(tmp)
-local tt=lefttime(tmp2)
-t=math.ceil(t/3600/24);
-tt=math.ceil(tt/3600/24);
-if((t>=0 and t<=daycalc) or (tt>=0 and tt<=daycalc))then
-tmp =MMDD(birth).." あと".. math.abs(t).."日 "
-if(t<0)then
-tmp =MMDD(birth).." あと".. math.abs(tt).."日 "
-end
-tmp = tmp .. idol.."\r\n"
---birthst[idol]=tmp
-end
-end
-end
-
 
 local tkeys = {}
 -- populate the table that holds the keys
 for k in pairs(birthst) do
-table.insert(tkeys, { birthst[k],string.match( birthst[k], "あと%d+")})
+tmp =string.match( birthst[k], "あと%d+")
+tmp = string.gsub(tmp, "あと","")
+table.insert(tkeys, { birthst[k],tonumber(tmp)})
+
 end
 -- sort the keys
 --table.sort(tkeys)
@@ -870,8 +793,9 @@ function script_update(settings)
 	source_name = obs.obs_data_get_string(settings, "source")
 	format_string = cut_string(obs.obs_data_get_string(settings, "format_string"),100)
 	utc           = obs.obs_data_get_double(settings, "UTC")
-	ima           = obs.obs_data_get_int(settings, "IMAS")
-	obs.obs_data_set_string(settings, "im",imas[ima][1]..imas[ima][3])
+	ima           =  findidol("AC",cut_string(obs.obs_data_get_string(settings, "im"),20))
+	--ima           = obs.obs_data_get_int(settings, "IMAS")
+	--obs.obs_data_set_string(settings, "im",imas[ima][1]..imas[ima][3])
 	imass           = obs.obs_data_get_int(settings, "IMSERIES")
 	daylim           = obs.obs_data_get_int(settings, "DAYLIM")
 	cgn =findidol("cg",cut_string(obs.obs_data_get_string(settings, "cg"),20))
@@ -890,7 +814,7 @@ end
 function script_defaults(settings)
 	obs.obs_data_set_default_string(settings, "format_string", "%Y/%m/%d(%Jw)%X(UTC%z)") --"%Y-%m-%d %X")
 	obs.obs_data_set_default_double(settings, "UTC", 9)
-	obs.obs_data_set_default_int(settings, "IMAS", 18)
+	--obs.obs_data_set_default_int(settings, "IMAS", 18)
 	obs.obs_data_set_default_string(settings, "im",imas[1][1]..imas[1][3])
 	obs.obs_data_set_default_int(settings, "IMSERIES", 1)
 	obs.obs_data_set_default_string(settings, "cg","SOUND VOLTEX")
