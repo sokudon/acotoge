@@ -1,0 +1,228 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>こんまいACばーすでーたいまー改</title>
+<head>
+</head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js"></script>
+<script src="./LIB/moment-with-locales.js"></script>
+<script  type="text/javascript" src="https://script.googleusercontent.com/macros/echo?user_content_key=f8iyYAbVYE1XuqTTXBFCaLi70l_k8-6Nkh4zteWBZEU6Dmxj_Lq5GF4xPqvvbuiXlwET_UcgGeogD82YCPZwRLA52qIglR13m5_BxDlH2jW0nuo2oDemN9CCS2h10ox_1xSncGQajx_ryfhECjZEnK0UBbbxxu01gYGZx2wSpl7-pYK1PhZyd09l87mwMVIUyn0mzeGL9RQAXCHRU0ZdcXWbApZ7w_FM42DxLaVtDWA5X1DLyemQstz9Jw9Md8uu&lib=MssOAiL1VBZRqCJT7YceYZHndBJ9ix56c"></script>
+<script>
+<!--
+
+var datastring="%M/%Dまであと%L日 %I -%Y";
+var dsn=["ML","CG","SIDEM","SHINY","DS","GAME"];
+
+window.onload = function() {
+get_web_para();
+nearaniv();
+}
+
+function url(){
+var url=document.location.href;
+var n = url.indexOf("#");
+if (n > -1) {
+url= url.substring(0,n);
+}
+var s="#";
+s += document.gm.gm.options.selectedIndex;
+s += ","+document.gg.nn.options.selectedIndex;
+if(document.getElementById("title").value!=""){
+s += "," +encodeURIComponent(datastring);
+}
+return url+s;
+}
+
+function get_web_para(){
+var url=document.location.href;
+var s="";
+var n = url.indexOf("#");
+if (n > -1) {
+s = url.substring(n+1,url.length);
+url= url.substring(0,n);
+var n=s.split(",")
+if(n.length>=1){document.gm.gm.options.selectedIndex=parseInt(n[0]);}
+if(n.length>=2){document.gg.nn.options.selectedIndex=parseInt(n[1]);}
+if(n.length>=3){document.getElementById("title").value=decodeURIComponent(n[2]);setting();}
+}}
+timer_update = 500;
+
+
+setInterval("get_count()",timer_update);
+
+function get_count() {
+
+	var timelc = "OS時間:"+moment().format("YYYY/MM/DD(ddd)HH:mm:ss [GMT]Z");
+	var timest = "日本時間:"+moment.utc().add("Hours",9).format("YYYY/MM/DD(ddd)HH:mm:ss [GMT]+09:00");
+	document.getElementById("now").innerHTML= timelc +"<br>"+ timest+"<br>"; 
+	nearaniv();
+}
+function kanaToHira(str) {
+    return str.replace(/[\u30a1-\u30f6]/g, function(match) {
+        var chr = match.charCodeAt(0) - 0x60;
+        return String.fromCharCode(chr);
+    });
+}
+
+var game=2;
+function nearaniv(){
+var beforday=[0,1,7,30];
+var daycalc =beforday[document.gm.gm.options.selectedIndex];
+game=document.gm.gm.options.selectedIndex;
+var year=moment.utc().add("Hours",9).format("YYYY");
+var yearn=(year)*1+1;
+var datas=[];
+var st="";
+var dtab=[];
+var j=0;
+var g=  $('#selectgg option:selected').text();
+dsn = g.split(",");
+var games=dsn[5];
+for(var i=1;i<gamedata.length;i++){
+var tmp=gamedata[i][1].replace(/^\d\d\d\d/gm,year);
+var tmp2=gamedata[i][1].replace(/^\d\d\d\d/gm,yearn);
+var t=moment(tmp)-moment();
+var tt=moment(tmp2)-moment();
+if(game>4){
+var yy=moment().format("YYYY/");
+t=moment(tmp)-moment(yy+(game-4)+"/01");
+tt=moment(tmp2)-moment(yy+(game-4)+"/01");
+daycalc=31;
+}
+t=Math.ceil(t/1000/3600/24);
+tt=Math.ceil(tt/1000/3600/24);
+
+if((t>=0 && t<=daycalc) || (tt>=0 && tt<=daycalc)){}
+else if(gamedata[i][4]!=""){
+tmp=gamedata[i][4].replace(/^\d\d\d\d/gm,year);
+tmp2=gamedata[i][4].replace(/^\d\d\d\d/gm,yearn);
+t=moment(tmp)-moment();
+tt=moment(tmp2)-moment();
+t=Math.ceil(t/1000/3600/24);
+tt=Math.ceil(tt/1000/3600/24);
+gamedata[i][2]=(gamedata[i][2]+",ゲーム内実周年日").replace(/(,ゲーム内実周年日)*$/,",ゲーム内実周年日");
+}
+
+if((t>=0 && t<=daycalc) || (tt>=0 && tt<=daycalc)){
+dtab[j]=[];
+dtab[j][0]=t;
+if(game>4){
+t=moment(tmp)-moment();
+tt=moment(tmp2)-moment();
+t=Math.ceil(t/1000/3600/24);
+tt=Math.ceil(tt/1000/3600/24);
+}
+if(t<0){dtab[j][0]=tt;}
+dtab[j][1]= gamedata[i][0]+"("+gamedata[i][2]+")";
+dtab[j][2]=  games;
+dtab[j][3]=moment.utc(tmp).add("Hours",9).format("M");
+dtab[j][4]=moment.utc(tmp).add("Hours",9).format("D");
+dtab[j][5]= kanaToHira(dtab[j][1]);
+dtab[j][6]=moment.utc(gamedata[i][1]).add("Hours",9).format("YYYY");
+j++;
+//st +=t+"日前"+ gamedata[i][0]+"("+gamedata[i][2]+")<br>"
+}}
+
+
+
+dtab.sort(function(a, b) {
+  return a[0] - b[0];
+});
+
+
+
+for(var i=0;i<dtab.length;i++){
+var tmp=datastring.replace("%M",dtab[i][3]).replace("%D",dtab[i][4])
+		.replace("%L",dtab[i][0]).replace("%G",dtab[i][2]).replace("%I",dtab[i][1])
+		.replace("%i",dtab[i][5]).replace("%Y",dtab[i][6]).replace("()","");
+st += escapeHTML(tmp)+"<br>";
+}
+
+document.getElementById("cdt_now").innerHTML=st;
+
+}
+
+function escapeHTML(html) {
+  return jQuery('<div>').text(html).html();
+}
+
+function changeBoxColor( newColor ) {
+    document.getElementById('bg').style.backgroundColor = newColor;
+}
+
+function setting(){
+datastring=document.getElementById("title").value;
+}
+
+//Twitterボタン
+function toTwitter() {
+	var url = "";
+	var urlmas= document.location.href.replace(/#.+/gm,"");
+	urlmas += "#"+game;
+   var s =document.getElementById("now").innerHTML+"<br>";
+    s+=document.getElementById("cdt_now").innerHTML;
+	s=s.replace(/<br>/gm,"\r\n");
+	s=s.replace(/<.*?>/gm,"");
+	s=s.replace(/\r\n\r\n/gm,"\r\n");
+	s=s+"\r\n"+urlmas+ "\r\n#KACタイマー";
+	
+	if (url == "") {
+		url = "http://twitter.com/share?text=" + encodeURIComponent(s);
+	} else {
+		url = "http://twitter.com/share?url=" + url + "&text=" + encodeURIComponent(s);
+	}
+	window.open(url,"_blank","width=600,height=300");
+}
+-->
+</script>
+<body id="bg">
+<h1>こんまいACばーすでーたいまー改</h1>
+<span id="now">text</span><br>
+<span id="cdt_now">text</span><br><br>
+
+<!--<p align="center"><a href="javascript:toTwitter()"><img src="./neta/imm_files/saved_resource" alt="Send to Twitter" width="61" height="61" border="0"></a></p>-->
+
+<form name="gm">
+周年の何日前まで表示:
+<select name="gm" id="sel1" onChange="nearaniv();">
+<option>当日のみ</option>
+<option>1日</option>
+<option selected="selected">7日</option>
+<option>30日</option>
+<option>--月ごと--</option>
+<option>1月</option>
+<option>2月</option>
+<option>3月</option>
+<option>4月</option>
+<option>5月</option>
+<option>6月</option>
+<option>7月</option>
+<option>8月</option>
+<option>9月</option>
+<option>10月</option>
+<option>11月</option>
+<option>12月</option>
+</select>
+</form>
+</select>
+</form>
+<form name="gg">
+%Gの表記:
+<select name="nn" id="selectgg" onChange="nearaniv();">
+<option selected="selected">GAME,GAME,GAME,GAME,GAME,KONAMI</option>
+</select>
+</form>
+
+表示形式(でふぉると "%M/%Dまであと%L日 %I -%Y" %iはひらがな名,%G　GAME)<input type="text" name="" value="" id="title" maxlength="50"　width:300px;><br>
+<input type="Submit" value="反映" Generate" onclick="setting();return false">
+<input type="Submit" value="URLにしてブックマーク（）" Generate" onclick="document.location.href=url();return false"><br>
+
+<p>クロマキー合成、背景色
+    <input type="button" value="緑色に変更する" onclick="changeBoxColor('#008000');">
+    <input type="button" value="青色に変更する" onclick="changeBoxColor('#0000ff');">
+    <input type="button" value="黄色に変更する" onclick="changeBoxColor('#ffff00');">
+    <input type="button" value="赤色に変更する" onclick="changeBoxColor('#ff0000');">
+    <input type="button" value="淡い緑色に戻す" onclick="changeBoxColor('#ccffcc');">
+    <input type="button" value="白色に戻す" onclick="changeBoxColor('#ffffff');">
+</p>
+
+</body>
+</html>
