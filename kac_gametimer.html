@@ -365,11 +365,11 @@ var KACTXT= JSON.stringify(KAC).replace(/\[/gm,"{").replace(/\]/gm,"}").replace(
 var KACTXTsel= JSON.stringify(cloned).replace('["ゲーム名","稼働","備考","終わり",""],',"").replace(/\.000/gm,"").replace(/\[""/gm,'["--"').replace(/'/gm,"’");
 //imas = 
 //imasb=''
-//data = data.replace('"KACOTOGE"',KACTXT);
-//data = data.replace('"OTOGE"',KACTXTsel);
+data = data.replace('"KACOTOGE"',KACTXT);
+data = data.replace('"OTOGE"',"'"+KACTXTsel+"'");
 
-data = data.replace(/^imas = .+/,"imas = "+KACTXT);
-data = data.replace(/^imasb ='.+'$/,"imasb ='"+KACTXTsel+"'");
+//data = data.replace(/^imas =.+/,"imas = "+KACTXT);
+//data = data.replace(/^imasb.+'$/,"imasb ='"+KACTXTsel+"'");
 
 TextDL(data,"date-and-time_kacbirth all.lua")
 return;
