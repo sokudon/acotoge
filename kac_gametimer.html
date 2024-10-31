@@ -130,7 +130,19 @@ function get_count() {
 	kaishi="開始まで:"
 	}
 	
-	var yelas="("+ Math.floor(esps/(3600*24)/365) +"年" +Math.floor(esps/(3600*24)%365) +"日)";
+	const start = moment.utc(ibekaishi);
+  const end = moment.utc();
+
+// 年数の差
+  const years = end.diff(start, 'years');
+
+  // 年数の差を引いた後の残りの日数
+  const remainingDays = end.diff(start.add(years, 'years'), 'days');
+
+  //return { years, remainingDays };
+  
+    var yelas = "("+years+"年"+ remainingDays+"日)" ;
+	//var yelas="("+ Math.floor(esps/(3600*24)/365) +"年" +Math.floor(esps/(3600*24)%365) +"日)";
 	var espst= Math.floor(esps/(3600*24)) +"日"+ yelas +Math.floor( (esps%(3600*24))/3600)  +"時間"+ Math.floor((esps%3600)/60) +"分" + Math.floor(esps%60) +"秒";
 	if(espst.indexOf("NaN")>=0){
 	espst="----";
