@@ -6,16 +6,31 @@
 --%Y/%m/%d(%Vw)%X(UTC%z%DST)
 
 --全部出し
---%UTC%n%c%DST%n%x%X%z%n%s%n%ISO%n%ISOZ%n%VR%m月%d日(%Vw)%H時%M分%S秒
+--%UTC
+--%c%DST
+--%x%X%z
+--%s
+--%ISO
+--%ISOZ
+--%VR%m月%d日(%Vw)%H時%M分%S秒
 
 --複数のタイムゾーン
---%JST%nUTC+?? %UTC%nUTC協定時間%ISOZ%nISO8601 %ISO%n
+--%JST
+--UTC+?? %UTC
+--UTC協定時間%ISOZ
+--ISO8601 %ISO
 
 --AC音ゲーの情報を出す
---%JST%n%i%n%J%is%n%K%it%n%E%ie%n
+--%i
+--%J%is
+--%K%it
+--%E%ie
 
---誕生日
---%JST%n%in%n%ib%n%ic
+
+--個別誕生日
+--%in
+--%ib%ic
+--%ia%il
 
 --独自拡張2020/04/17現在 
 --%EM	AC音ゲーお誕生日何日以内のやつ
@@ -27,9 +42,12 @@
 --%it	AC音ゲーの記念日までの時間
 --%ie	AC音ゲーのサービス終了した時間からの経過時間(データがないものは表示なし)
 
+--%in	AC音ゲー個別
 --%ib	AC音ゲー個別誕生日
 --%ic	AC音ゲー個別誕生日までの時間
---%in	AC音ゲー個別
+--%ia	AC音ゲー今年の誕生日
+--%il	AC音ゲー今年の誕生日までの時間
+
 --%UTC  worldtime set UTCsetting,	UTC標準時からUI設定の時間を表示,サマータイムは非対応
 --%JST  ISO8601表示日本時間
 --%ISO  ISO8601表示ローカル時間
@@ -190,15 +208,21 @@ function get_timezone_the_day()
 end
 
 function lefttime(dt) 
-	if(dt=="Invalid date")then
+	local timedata= parse_json_date_utc(dt)
+	if( type(timedata) == "string") then
 	return dt
 	end
-	local t=parse_json_date_utc(dt) -os.time() 
+	local t=timedata -os.time()
 	return  t
 end
 
-function elasped(dt) 
-	return  -(lefttime(dt))
+function elasped(dt)
+	local timedata= parse_json_date_utc(dt)
+	if( type(timedata) == "string") then
+	return dt
+	end
+	local t=timedata -os.time()
+	return  -t
 end
 
 function DateUTC(y,M,D,h,m,s,ms)  --DATEUTCもどきMM月だけjsとおなじ-1月なので（）
@@ -222,11 +246,139 @@ function JSTday()
 return os.date('!%d',os.time()+3600*9)
 end
 
+function ISOtoJST(dt)
+return os.date('!%Y-%m-%dT%H:%M:%S+09:00',parse_json_date_utc(dt)+3600*9)
+end
+
+--https://claude.ai/chat/805aaf7b-938a-486f-afe0-3109f98fb181
+-- RFC 2822 date parser
+-- Example input: "Tue, 15 Nov 1994 08:12:31 +0200"
+
+local months = {
+    Jan = 1, Feb = 2, Mar = 3, Apr = 4, May = 5, Jun = 6,
+    Jul = 7, Aug = 8, Sep = 9, Oct = 10, Nov = 11, Dec = 12
+}
+
+local weekdays = {
+    Sun = 0, Mon = 1, Tue = 2, Wed = 3, Thu = 4, Fri = 5, Sat = 6
+}
+
+local function parse_timezone(tz)
+    if tz == "GMT" or tz == "UT" then return 0 end
+    if tz == "EDT" then return -4 * 3600 end
+    if tz == "EST" or tz == "CDT" then return -5 * 3600 end
+    if tz == "CST" or tz == "MDT" then return -6 * 3600 end
+    if tz == "MST" or tz == "PDT" then return -7 * 3600 end
+    if tz == "PST" then return -8 * 3600 end
+    if tz == "JST" then return 9 * 3600 end
+    if tz == "HKT" then return 8 * 3600 end
+    
+    -- Parse numeric timezone (+0200 format)
+    local sign, hour, min = tz:match("([+-])(%d%d)(%d%d)")
+    if sign and hour and min then
+        local offset = tonumber(hour) * 3600 + tonumber(min) * 60
+        return sign == "+" and offset or -offset
+    end
+    
+    return nil
+end
+
+local function parse_rfc2822_date(date_string)
+    -- Remove optional weekday and comma
+    date_string = date_string:gsub("^%w+,%s*", "")
+    
+    -- Try parsing with seconds first
+    local day, month, year, hour, min, sec, tz = date_string:match(
+        "(%d+)%s+(%a+)%s+(%d+)%s+(%d+):(%d+):(%d+)%s+([%a%d+-]+)"
+    )
+    
+    -- If seconds are not present, try parsing without them
+    if not (day and month and year and hour and min and sec and tz) then
+        day, month, year, hour, min, tz = date_string:match(
+            "(%d+)%s+(%a+)%s+(%d+)%s+(%d+):(%d+)%s+([%a%d+-]+)"
+        )
+        sec = "0" -- Default seconds to 0 if not provided
+    end
+    
+    if not (day and month and year and hour and min and tz) then
+        return nil, "Invalid date format"
+    end
+    
+    -- Convert components to numbers
+    day = tonumber(day)
+    year = tonumber(year)
+    hour = tonumber(hour)
+    min = tonumber(min)
+    sec = tonumber(sec)
+    
+    -- Convert month name to number
+    month = months[month]
+    if not month then
+        return nil, "Invalid month name"
+    end
+    
+    -- Validate ranges
+    if day < 1 or day > 31 or
+       hour < 0 or hour > 23 or
+       min < 0 or min > 59 or
+       sec < 0 or sec > 59 then
+        return nil, "Component out of range"
+    end
+    
+    -- Handle two-digit years
+    if year < 100 then
+        year = year + (year >= 50 and 1900 or 2000)
+    end
+    
+    -- Parse timezone
+    local tz_offset = parse_timezone(tz)
+    if not tz_offset then
+        --return nil, "Invalid timezone"
+        tz_offset =0 --GMT処理
+    end
+    
+    -- Return a table with parsed components
+    return {
+        year = year,
+        month = month,
+        day = day,
+        hour = hour,
+        min = min,
+        sec = sec,
+        tz_offset = tz_offset
+    }
+end
+
+
+-- Example usage
+local function test_parser()
+    local test_dates = {
+        "Tue, 15 Nov 1994 08:12:31 +0200",  -- With seconds
+        "15 Nov 1994 08:12 GMT",            -- Without seconds
+        "15 Nov 94 08:12:31 EST",           -- With seconds, 2-digit year
+        "15 Nov 94 08:12 EDT",              -- Without seconds, 2-digit year
+    }
+    
+    for _, date in ipairs(test_dates) do
+        local result, err = parse_rfc2822_date(date)
+        if result then
+            print("Year:".. result.year)
+            print("Month:".. result.month)
+            print("Day:".. result.day)
+            print("Hour:".. result.hour)
+            print("Minute:".. result.min)
+            print("Second:".. result.sec)
+            print("Timezone offset (seconds):".. result.tz_offset)
+        else
+            print("Error:".. err)
+        end
+    end
+end
 
 function parse_json_date_utc(json_date) --ISO8601datetimeparse パーサー完成版？
     local pattern = "(%d+)%-(%d+)%-(%d+)%a(%d+)%:(%d+)%:([%d+.]+)([Z%+%-])(%d?%d?):?(%d?%d?)"
 
-    if(json_date:match("U$")) then --try parse UTC FIX
+    if(json_date:match("UU$")) then --try parse UTC FIX
     local normal = "(%d+)[%-%/](%d+)[%-%/](%d+) +(%d+)%:(%d+)U$"--ローカル時間MD+HM
         if(json_date:match(normal))then
         local year, month, day, hour, minute,
@@ -235,9 +387,11 @@ function parse_json_date_utc(json_date) --ISO8601datetimeparse パーサー完�
      end
      end
      
-     
     if(json_date:match(pattern)==nil)then
-   
+     if(json_date:match("(%d+)%s+(%a+)%s+(%d+)%s+(%d+):(%d+):(%d+)%s+([%a%d+-]+)") or json_date:match("(%d+)%s+(%a+)%s+(%d+)%s+(%d+):(%d+)%s+([%a%d+-]+)")) then --RFC2822
+		local date=parse_rfc2822_date(json_date)
+        return preset_fairfield_dateutc(date.year,date.month,date.day) -date.tz_offset + date.hour*3600 + date.min*60 + date.sec
+	 end
     local unix = "^(%d+)$"
     local normalp = "(%d+)[%-%/](%d+)[%-%/](%d+)$"--ローカル時間MD
     local normalq = "(%d+)[%-%/](%d+)[%-%/](%d+) +(%d+)$"--ローカル時間MD+h
@@ -271,17 +425,22 @@ function parse_json_date_utc(json_date) --ISO8601datetimeparse パーサー完�
      return "Invalid date"
     end
     
-    local year, month, day, hour, minute, 
-        seconds, offsetsign, offsethour, offsetmin =json_date:match(pattern)
     
-    local timestamp = os.time{year = year, month = month, 
-        day = day, hour = 4, min = minute, sec = seconds}
+    local year, month, day, hour, minute, seconds, offsetsign, offsethour, offsetmin =json_date:match(pattern)
     local offset = 0
     if offsetsign ~= 'Z' then
       offset = tonumber(offsethour) * 3600 + tonumber(offsetmin)*60
       if offsetsign == "-" then offset = offset * -1 end
     end
     
+    --ymd 1-12月のみパーす
+	if (tonumber(year) and tonumber(month) and tonumber(day)) then
+	 if(tonumber(month) >0 and tonumber(month) <=12)then
+	     return preset_fairfield_dateutc(year,month,day) -offset + hour*3600 + minute*60 + seconds
+	end
+	end
+	
+    return "Invalid date"
     
     --local temp = os.date("*t",timestamp)
     --if(temp.isdst) then  --パースした時刻がサマーがしらべる
@@ -291,16 +450,16 @@ function parse_json_date_utc(json_date) --ISO8601datetimeparse パーサー完�
     
     --return timestamp + get_timezone_the_day() -offset
     
-    return timestamp + get_timezone_offset(timestamp) -offset  + (hour-4)*3600
-    --hourは越境時タイムマシンが発生するので最後に足す、幻の2時(2020-03-08T02:00:00) -05:00
+    --old method ,avoid crrupt dateme in DST timezone, simply time slide method use OSTIME
+    --hourはサマータイム越境時タイムマシンが発生するので最後に足す、幻の2時(2020-03-08T02:00:00) -05:00
     --https://ja.wikipedia.org/wiki/%E5%A4%8F%E6%99%82%E9%96%93　ブラジルが0時豪州3時なので4時までずらす
+    --local timestamp = os.time{year = year, month = month, day = day, hour = 4, min = minute, sec = seconds}
+    --return timestamp + get_timezone_offset(timestamp) -offset  + (hour-4)*3600
 end
 
-
-
 --https://claude.ai/chat/80c64364-c40a-400f-be84-3cb3b6382235
---DateUTC by luascript no consider timezone after1970
-function dateutc(year, month, day, hour, min, sec)
+--DateUTC by luascript no consider timezone after1970,simple method
+function simple_dateutc(year, month, day, hour, min, sec)
     local total_days = 0
     
     for y = 1970, year - 1 do
@@ -320,13 +479,87 @@ function dateutc(year, month, day, hour, min, sec)
     
     total_days = total_days + day -1 
     
-    local timestamp= total_days * 86400 + 3600*hour + 60*min + sec
-    
-    --d = { year = 2024, month = 11, day = 22, hour = 9, min = 0, sec = 0}
-    --debugtxt1=string.format("%d",timestamp)
-    --debugtxt1=debugtxt1 .." ostime" ..string.format("%d",os.time(d))
+    local timestamp= total_days * 86400
     
     return timestamp
+end
+
+--https://claude.ai/chat/c387c45b-b61c-4b06-8f21-3d74472aa11a
+-- フリーゲルの公式
+function friegel_days(y, m, d)
+    if m < 3 then
+        y = y - 1
+        m = m + 12
+    end
+    
+    return math.floor(365.25 * y)  -- 年からの日数
+        + math.floor(y / 400)      -- 400年ごとのうるう年補正
+        - math.floor(y / 100)      -- 100年ごとのうるう年補正
+        + math.floor(30.6001 * (m + 1))  -- 月からの日数
+        + d - 1
+end
+
+-- フェアフィールドの公式
+function fairfield_days(y, m, d)
+    if m < 3 then
+        y = y - 1
+        m = m + 12
+    end
+    
+    return math.floor(365.25 * y) 
+        + math.floor(y / 400) 
+        - math.floor(y / 100)
+        + math.floor((153 * m - 457) / 5)  -- 月の計算が異なる
+        + d - 1
+end
+
+-- ツェラーの公式（曜日計算用だが日数計算にも応用可能）
+function zeller_days(y, m, d)
+    if m < 3 then
+        y = y - 1
+        m = m + 12
+    end
+    
+    local c = math.floor(y / 100)
+    local k = y % 100
+    
+    -- 曜日を求める公式（0=土曜日, 1=日曜日, ..., 6=金曜日）
+    local w = (d + math.floor((13 * (m + 1)) / 5) + k + math.floor(k / 4) + math.floor(c / 4) - 2 * c) % 7
+    
+    -- 1970年1月1日からの経過日数に変換する場合は別途計算が必要
+    return w  -- これは曜日の値
+end
+
+-- 1970年1月1日からの経過日数を計算する関数（フリーゲルの公式使用）
+function days_since_epoch(y, m, d)
+    return friegel_days(y, m, d) -friegel_days(1970, 1, 1)
+end
+
+-- UTCタイムスタンプを取得（秒単位）
+function friegel_dateutc(y, m, d)
+    return days_since_epoch(y, m, d) * 86400
+end
+
+--https://teratail.com/questions/292340でみつけたアルゴの移植 fairfieldのプリセットでの計算
+--https://ja.wikipedia.org/wiki/%E3%83%84%E3%82%A7%E3%83%A9%E3%83%BC%E3%81%AE%E5%85%AC%E5%BC%8F
+function days(y, m, d)
+    -- 月ごとの累積日数テーブル
+    local t = { 306, 337, 0, 31, 61, 92, 122, 153, 184, 214, 245, 275 }
+    
+    m= tonumber(m)
+    -- 1,2月の場合は前年として計算
+    if(m < 3)then
+    y = y - 1
+    end
+    
+    local tm=365*y + math.floor(y/4) - math.floor(y/100) + math.floor(y/400) + t[m] + d
+    --debugtxt3= tm .." "..y..m..d
+    
+    return tm
+end
+
+function preset_fairfield_dateutc(y, m, d)
+    return (days(y, m, d) - days(1970, 1, 1)) * 86400
 end
 
 
@@ -389,21 +622,8 @@ function getDaysFromYearStart(year, month, day)
     return days + day
 end
 
--- メイン計算処理
-function calculateDateDifference(date1, date2)
-    -- 日付文字列を年月日に分解
-    local year1, month1, day1 = date1:match("(%d+)%-(%d+)%-(%d+)")
-    local year2, month2, day2 = date2:match("(%d+)%-(%d+)%-(%d+)")
-    
-    -- 数値に変換
-    year1, month1, day1 = tonumber(year1), tonumber(month1), tonumber(day1)
-    year2, month2, day2 = tonumber(year2), tonumber(month2), tonumber(day2)
-    
-        
-    -- 総日数を計算
-    --local totalDays = math.floor(elasped(date1)/86400)
+function simple_totaldays(year1, month1, day1,year2, month2, day2)
     local totalDays = 0
-
     -- 完全な年のうるう年を計算
     for year = year1, year2 - 1 do
         if isLeapYear(year) then
@@ -419,23 +639,44 @@ function calculateDateDifference(date1, date2)
     -- 最後の年の日数を加える
     totalDays = totalDays + getDaysFromYearStart(year2, month2, day2)
     
+    return totalDays
+end
+
+-- メイン計算処理
+function calculateDateDifference(date1, date2)
+    -- 日付文字列を年月日に分解
+    local year1, month1, day1 = date1:match("(%d+)%-(%d+)%-(%d+)")
+    local year2, month2, day2 = date2:match("(%d+)%-(%d+)%-(%d+)")
+    
+    -- 数値に変換
+    year1, month1, day1 = tonumber(year1), tonumber(month1), tonumber(day1)
+    year2, month2, day2 = tonumber(year2), tonumber(month2), tonumber(day2)
+    
+        
+    -- 総日数を計算
+    --local totalDays = math.floor(elasped(date1)/86400)
+    --local totalDays = simple_totaldays(year1, month1, day1,year2, month2, day2)
+    local totalDays = -((days(year1, month1, day1) - days(year2, month2, day2)))
+    
     
     --今年の周年より早いか遅いか
     local after_aniv = elasped(debugtxt3);
+    local monthadjust=0
     if(after_aniv >=0) then
-    after_aniv= 0
+    monthadjust= 0
     elseif(month1 == month2) then
-    after_aniv= -1
+    monthadjust= -1
     end
     local leapDays=countLeapDays(year1, month1, day1, year2, month2, day2,after_aniv)
     
-    --dateutc(2024,11,22,0,0,0)
+    --simple_dateutc(2024,11,22,0,0,0)
     
     -- 年数を計算
-    local monthdiff= (year2-year1)*12 + month2-month1  + after_aniv
+    local monthdiff= (year2-year1)*12 + month2-month1  + monthadjust
     local completeYears =  math.floor(monthdiff/12)  --math.floor((totalDays-leapDays) / 12)
     -- 残りの日数を計算
     local remainingDays = totalDays - (completeYears * 365) -leapDays
+    
     
     return totalDays.."日".."("..completeYears.."年閏"..leapDays.."日,"..remainingDays.."日)"
 end
@@ -548,7 +789,7 @@ function parse_jp_era(date)
    local inum = (ima)%(#imas+1)    --imas[1] AC,dre 18 ,miri 22
    if(inum==0)then
    inum =1
-   end  	
+   end
    local tu = elasped(imas[inum][2])
    local imasname =imas[inum][1]
    
@@ -566,16 +807,16 @@ function parse_jp_era(date)
 	local ist =os.date(dateu,tt)
 	local nenme =""
 	if(nst==ist)then
-	local years    = math.floor(tu*10/(864000*365))
+	local years = math.floor(tu*10/(864000*365))
 	nenme = ","..years.."周年"
 	end
 	local ep=get_ep(tu)
-    local date1=imas[inum][2]
+    local date1=ISOtoJST(imas[inum][2])
     local date2=os.date("!%Y-%m-%dT%H:%M:%S+09:00",os.time()+9*3600)
   	
   	
-  local dt = get_anniversary_day(tt)
-  debugtxt3=dt
+	local dt = get_anniversary_day(tt)
+	debugtxt3=dt
   
   
     local eps = calculateDateDifference(date1,date2)
@@ -598,9 +839,12 @@ function parse_jp_era(date)
   	date =string.gsub(date, "%%in",idn)
   	date =string.gsub(date, "%%ib","稼働日は不明です")
   	date =string.gsub(date, "%%ic","")
+  	date =string.gsub(date, "%%ia","")
+  	date =string.gsub(date, "%%il","")
   else
-  dt=string.gsub(dt,"2020",theyear)
+  tt = parse_json_date_utc(dt)+9*3600
   local aniv=lefttime(dt)
+  local bs = get_anniversary_day(tt)
   local gm = "稼働日" 
   if(aniv<0) then
   aniv =-aniv
@@ -608,19 +852,31 @@ function parse_jp_era(date)
   else
   gm = gm.."まで"
   end
-  local ep= string.gsub(get_ep(aniv),"0年","")
+  
+  local anivb=lefttime(bs)
+  local gmm = "周年" 
+  if(anivb<0) then
+  anivb =-anivb
+  gmm = gmm.."から"
+  else
+  gmm = gmm.."まで"
+  end
+  local date1=ISOtoJST(imasb[imassel[imass]][useidol][1])
+  local date2=os.date("!%Y-%m-%dT%H:%M:%S+09:00",os.time()+9*3600)
+  local eps=calculateDateDifference(date1,date2)
+  local ep= string.gsub(get_ep(anivb),"0年","")
   	date =string.gsub(date, "%%in",idn)
   	date =string.gsub(date, "%%ib",JST(dt))
-  	date =string.gsub(date, "%%ic",gm..ep)
+  	date =string.gsub(date, "%%ic",gm..eps)
+  	date =string.gsub(date, "%%ia",JST(bs))
+  	date =string.gsub(date, "%%il",gmm..ep)
   end
   	
   	local imm=imas[inum][4]
   	debugtxt2=JST(imas[inum][2])  --開始日
-  	--debugtxt1=""
+  	debugtxt1= "" --os.date("!%Y-%m-%dT%H:%M:%S+00:00", parse_json_date_utc("24 Nov 2024 22:54 UT"))
+  	--test_parser()
   	
-  	--debugtxt1=imasb["sc"][1][2]
-  	--debugtxt2=imasb["ml"][1][2]
-    --debugtxt3=imasb["cg"][1][2]
   	
   	if(isempty(imm)==false) then
   	debugtxt1= JST(imm) --差終わり日
@@ -855,7 +1111,7 @@ local stlen=tonumber(#imas)
 local theyear=os.date("!%Y",os.time()+9*3600)
 local theyearn=theyear*1+1
 
-debugtxt1=string.gsub(imas[15][2], "^(%d+)",theyear)
+--debugtxt1=string.gsub(imas[15][2], "^(%d+)",theyear)
 
 for i=1,stlen do
 local birth=imas[i][2]
